@@ -1,6 +1,8 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS # 추가됨
 
 app = Flask(__name__)
+CORS(app) # 모든 경로에서의 요청 허용
 
 @app.route('/')
 def home():
