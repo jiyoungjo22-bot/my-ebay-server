@@ -1,25 +1,35 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <body>
     <h2>이베이 판매가 계산기</h2>
     <input type="text" id="url" placeholder="상품 URL" style="width:300px;">
     <input type="number" id="cost" value="10000">
     <button onclick="calc()">계산하기</button>
-    <button onclick="window.location.href='https://my-ebay-server.onrender.com/api/download'">다운로드</button>
-    <div id="result"></div>
+    <div id="result" style="margin-top:20px; font-weight:bold;"></div>
 
     <script>
         async function calc() {
+            const url = document.getElementById('url').value;
+            const cost = document.getElementById('cost').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerText = "계산 중...";
+            
             try {
                 const res = await fetch('https://my-ebay-server.onrender.com/api/scrape', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({productUrl: document.getElementById('url').value, cost: document.getElementById('cost').value})
+                    body: JSON.stringify({productUrl: url, cost: cost})
                 });
+                
+                if (!res.ok) throw new Error("서버 응답 오류: " + res.status);
+                
                 const data = await res.json();
-                if(data.error) alert("오류: " + data.error);
-                else document.getElementById('result').innerText = "상품명: " + data.info.name;
-            } catch(e) { alert("연결 실패: " + e); }
+                resultDiv.innerText = "상품명: " + data.info.name + " / 추천가: " + data.recommended_usd_price + " USD";
+            } catch(e) {
+                resultDiv.innerText = "오류 발생: " + e.message;
+                console.error(e);
+            }
         }
     </script>
 </body>
