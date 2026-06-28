@@ -1,22 +1,30 @@
 from flask import Flask, jsonify, request
-from flask_cors import CORS # 추가됨
+from flask_cors import CORS
+from crawler import UniversalCrawler
 
 app = Flask(__name__)
-CORS(app) # 모든 경로에서의 요청 허용
+CORS(app)
 
-@app.route('/')
-def home():
-    return "글로벌 역직구 대시보드 서버 정식 구동 중"
-
-@app.route('/api/calculate', methods=['POST'])
-def calculate_price():
+@app.route('/api/scrape', methods=['POST'])
+def scrape_and_calculate():
     data = request.json
-    cost = data.get('cost', 0)
-    margin = data.get('margin', 0.1)
+    url = data.get('productUrl')
+    cost = float(data.get('cost', 0))
+    margin = float(data.get('margin', 0.1))
     
-    # 환율 1380원, 이베이 수수료 15% 기준 역산
+    # 1. 크롤링 수행
+    crawler = UniversalCrawler()
+    # 쿠팡용 규칙 (실제 사이트 구조에 따라 조정 가능)
+    config = {'name': 'h2', 'price': '.total-price', 'origin': '.prod-attr-item', 'shipping': '.delivery-fee'}
+    info = crawler.fetch_data(url, config)
+    
+    # 2. 역직구 가격 계산 로직 (환율 1380원, 수수료 15% 가정)
     usd_price = (cost * (1 + margin)) / (1380 * (1 - 0.15))
-    return jsonify({"recommended_usd_price": round(usd_price, 2)})
+    
+    return jsonify({
+        "info": info,
+        "recommended_usd_price": round(usd_price, 2)
+    })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run()
