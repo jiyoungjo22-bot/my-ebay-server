@@ -1,35 +1,21 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <body>
     <h2>이베이 판매가 계산기</h2>
     <input type="text" id="url" placeholder="상품 URL" style="width:300px;">
-    <input type="number" id="cost" value="10000">
     <button onclick="calc()">계산하기</button>
-    <div id="result" style="margin-top:20px; font-weight:bold;"></div>
+    <div id="result"></div>
 
     <script>
         async function calc() {
             const url = document.getElementById('url').value;
-            const cost = document.getElementById('cost').value;
-            const resultDiv = document.getElementById('result');
-            
-            resultDiv.innerText = "계산 중...";
-            
-            try {
-                const res = await fetch('https://my-ebay-server.onrender.com/api/scrape', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({productUrl: url, cost: cost})
-                });
-                
-                if (!res.ok) throw new Error("서버 응답 오류: " + res.status);
-                
-                const data = await res.json();
-                resultDiv.innerText = "상품명: " + data.info.name + " / 추천가: " + data.recommended_usd_price + " USD";
-            } catch(e) {
-                resultDiv.innerText = "오류 발생: " + e.message;
-                console.error(e);
-            }
+            const res = await fetch('https://my-ebay-server.onrender.com/api/scrape', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({productUrl: url, cost: 15000})
+            });
+            const data = await res.json();
+            document.getElementById('result').innerText = data.error ? "오류: "+data.error : "결과: "+data.info.name;
         }
     </script>
 </body>
