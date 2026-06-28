@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>글로벌 역직구 대시보드</title>
+    <title>이베이 역직구 판매가 계산기</title>
     <style>
         body { font-family: sans-serif; padding: 20px; }
         .result-item { border: 1px solid #ccc; padding: 15px; margin-top: 10px; border-radius: 8px; }
@@ -10,52 +10,39 @@
 </head>
 <body>
     <h2>이베이 추천 판매가 계산기</h2>
+    <p>서버 주소: <input type="text" id="apiUrl" value="https://my-ebay-server.onrender.com/api/scrape" style="width:400px;"></p>
+    <p>상품 URL: <input type="text" id="productUrl" placeholder="상품 페이지 주소" style="width:400px;"></p>
+    <p>소싱 비용(원): <input type="number" id="cost" value="15000"></p>
+    <p>목표 마진율: <input type="number" id="margin" value="0.15"></p>
     
-    <p>1. Render 서버 주소: <input type="text" id="apiUrl" value="https://my-ebay-server.onrender.com/api/scrape" style="width:400px;"></p>
-    <p>2. 쇼핑몰 상품 URL: <input type="text" id="productUrl" placeholder="상품 페이지 주소를 입력하세요" style="width:400px;"></p>
-    <p>3. 국내 총 소싱 비용 (원): <input type="number" id="cost" value="15000"></p>
-    <p>4. 목표 마진율 (예: 0.15): <input type="number" id="margin" value="0.15"></p>
-    
-    <button onclick="calculate()" style="padding: 10px 20px; cursor: pointer;">계산하기 (데이터 수집 및 계산)</button>
+    <button onclick="calculate()">계산하기</button>
+    <button onclick="downloadCSV()" style="background-color: #28a745; color: white;">엑셀(CSV) 다운로드</button>
     
     <div id="result"></div>
 
     <script>
         async function calculate() {
             const apiUrl = document.getElementById('apiUrl').value;
-            const productUrl = document.getElementById('productUrl').value;
-            const cost = document.getElementById('cost').value;
-            const margin = document.getElementById('margin').value;
-
-            // 로딩 메시지 표시
+            const res = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    productUrl: document.getElementById('productUrl').value,
+                    cost: document.getElementById('cost').value,
+                    margin: document.getElementById('margin').value
+                })
+            });
+            const data = await res.json();
             const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML += '<p>수집 및 계산 중...</p>';
+            resultDiv.innerHTML += `
+                <div class="result-item">
+                    <p>상품명: ${data.info.name}</p>
+                    <p>추천 판매가: ${data.recommended_usd_price} USD</p>
+                </div>`;
+        }
 
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        productUrl: productUrl,
-                        cost: parseFloat(cost),
-                        margin: parseFloat(margin)
-                    })
-                });
-                const data = await response.json();
-                
-                // 리스트 형태로 쌓기
-                const newItem = document.createElement('div');
-                newItem.className = 'result-item';
-                newItem.innerHTML = `
-                    <p><strong>상품명:</strong> ${data.info.name}</p>
-                    <p><strong>추천 판매가:</strong> ${data.recommended_usd_price} USD</p>
-                    <p><strong>원산지:</strong> ${data.info.origin}</p>
-                    <p><strong>배송비:</strong> ${data.info.shipping}</p>
-                `;
-                resultDiv.prepend(newItem); // 최신 데이터가 위로 오게 추가
-            } catch (error) {
-                resultDiv.innerHTML += `<p style="color:red;">오류 발생: ${error.message}</p>`;
-            }
+        function downloadCSV() {
+            window.location.href = 'https://my-ebay-server.onrender.com/api/download';
         }
     </script>
 </body>
