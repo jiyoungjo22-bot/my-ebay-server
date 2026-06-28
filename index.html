@@ -1,48 +1,25 @@
 <!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>이베이 역직구 판매가 계산기</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; }
-        .result-item { border: 1px solid #ccc; padding: 15px; margin-top: 10px; border-radius: 8px; }
-    </style>
-</head>
+<html>
 <body>
-    <h2>이베이 추천 판매가 계산기</h2>
-    <p>서버 주소: <input type="text" id="apiUrl" value="https://my-ebay-server.onrender.com/api/scrape" style="width:400px;"></p>
-    <p>상품 URL: <input type="text" id="productUrl" placeholder="상품 페이지 주소" style="width:400px;"></p>
-    <p>소싱 비용(원): <input type="number" id="cost" value="15000"></p>
-    <p>목표 마진율: <input type="number" id="margin" value="0.15"></p>
-    
-    <button onclick="calculate()">계산하기</button>
-    <button onclick="downloadCSV()" style="background-color: #28a745; color: white;">엑셀(CSV) 다운로드</button>
-    
+    <h2>이베이 판매가 계산기</h2>
+    <input type="text" id="url" placeholder="상품 URL" style="width:300px;">
+    <input type="number" id="cost" value="10000">
+    <button onclick="calc()">계산하기</button>
+    <button onclick="window.location.href='https://my-ebay-server.onrender.com/api/download'">다운로드</button>
     <div id="result"></div>
 
     <script>
-        async function calculate() {
-            const apiUrl = document.getElementById('apiUrl').value;
-            const res = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    productUrl: document.getElementById('productUrl').value,
-                    cost: document.getElementById('cost').value,
-                    margin: document.getElementById('margin').value
-                })
-            });
-            const data = await res.json();
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML += `
-                <div class="result-item">
-                    <p>상품명: ${data.info.name}</p>
-                    <p>추천 판매가: ${data.recommended_usd_price} USD</p>
-                </div>`;
-        }
-
-        function downloadCSV() {
-            window.location.href = 'https://my-ebay-server.onrender.com/api/download';
+        async function calc() {
+            try {
+                const res = await fetch('https://my-ebay-server.onrender.com/api/scrape', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({productUrl: document.getElementById('url').value, cost: document.getElementById('cost').value})
+                });
+                const data = await res.json();
+                if(data.error) alert("오류: " + data.error);
+                else document.getElementById('result').innerText = "상품명: " + data.info.name;
+            } catch(e) { alert("연결 실패: " + e); }
         }
     </script>
 </body>
