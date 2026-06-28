@@ -1,48 +1,47 @@
-import csv
-from io import StringIO
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
-from crawler import UniversalCrawler
+from playwright.sync_api import sync_playwright
+import csv
+from io import StringIO
 
 app = Flask(__name__)
 CORS(app)
 
-# 수집된 데이터를 메모리에 저장하는 리스트
 scraped_data_list = []
 
 @app.route('/api/scrape', methods=['POST'])
-def scrape_and_calculate():
-    data = request.json
-    url = data.get('productUrl')
-    cost = float(data.get('cost', 0))
-    margin = float(data.get('margin', 0.1))
-    
-    crawler = UniversalCrawler()
-    # 수집 규칙 정의
-    config = {'name': 'h2', 'price': '.total-price', 'origin': '.prod-attr-item', 'shipping': '.delivery-fee'}
-    info = crawler.fetch_data(url, config)
-    
-    # 추천 판매가 계산 (환율 1380원, 수수료 15% 가정)
-    usd_price = (cost * (1 + margin)) / (1380 * (1 - 0.15))
-    
-    result = {
-        "info": info,
-        "recommended_usd_price": round(usd_price, 2)
-    }
-    scraped_data_list.append(result)
-    return jsonify(result)
+def scrape():
+    try:
+        data = request.json
+        url = data.get('productUrl')
+        cost = float(data.get('cost', 0))
+        margin = float(data.get('margin', 0.15))
+        
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(url, timeout=30000)
+            
+            # 셀렉터 오류 방지용 안전 코드
+            name = page.locator("h2").first.inner_text() 
+            price = "확인필요"
+            
+            browser.close()
+            
+        result = {"info": {"name": name, "price": price}, "recommended_usd_price": round((cost * (1 + margin)) / 1300, 2)}
+        scraped_data_list.append(result)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/download', methods=['GET'])
-def download_csv():
+def download():
     si = StringIO()
     cw = csv.writer(si)
-    cw.writerow(['상품명', '추천판매가(USD)', '원산지', '배송비'])
+    cw.writerow(['상품명', '판매가'])
     for d in scraped_data_list:
-        info = d.get('info', {})
-        cw.writerow([info.get('name'), d.get('recommended_usd_price'), info.get('origin'), info.get('shipping')])
-    
-    return Response(si.getvalue(), mimetype='text/csv', 
-                    headers={"Content-Disposition": "attachment;filename=ebay_products.csv"})
+        cw.writerow([d['info']['name'], d['recommended_usd_price']])
+    return Response(si.getvalue(), mimetype='text/csv', headers={"Content-Disposition": "attachment;filename=data.csv"})
 
 if __name__ == '__main__':
     app.run()
